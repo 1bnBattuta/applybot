@@ -1,3 +1,4 @@
-langchain-anthropic
+python-dotenv
+langchain_openai
 langchain-core
 pdfplumber
