@@ -2,19 +2,22 @@
 CV Parser Agent
 ---------------
 Takes a path to a CV PDF, extracts structured information using pdfplumber + LangChain
-(Claude via ChatAnthropic) with structured output, and returns a UserProfile dict.
+(ChatOpenAI) with structured output, and returns a UserProfile dict.
 
 Architecture ref: Section 3.1 — CV parser agent
 """
-
+import os
 import json
 import logging
 from pathlib import Path
 
 import pdfplumber
-from langchain_anthropic import ChatAnthropic
+from dotenv import load_dotenv
+from langchain_openai import ChatOpenAI
 from langchain_core.prompts import ChatPromptTemplate
-from langchain_core.pydantic_v1 import BaseModel, Field
+from pydantic import BaseModel, Field
+
+load_dotenv()  # charge OPENAI_API_KEY depuis .env
 
 logger = logging.getLogger(__name__)
 
@@ -80,7 +83,7 @@ def extract_text_from_pdf(pdf_path: str | Path) -> str:
 # LangChain structured extraction
 # ---------------------------------------------------------------------------
 
-def _build_chain(llm: ChatAnthropic):
+def _build_chain(llm: ChatOpenAI):
     """
     Build a LangChain chain: prompt | llm.with_structured_output(UserProfile).
     """
@@ -106,14 +109,14 @@ def _build_chain(llm: ChatAnthropic):
     return prompt | structured_llm
 
 
-def _call_langchain_parse(raw_text: str, llm: ChatAnthropic) -> dict:
+def _call_langchain_parse(raw_text: str, llm: ChatOpenAI) -> dict:
     """
     Run the LangChain chain and return the UserProfile as a plain dict.
     """
     chain = _build_chain(llm)
     profile: UserProfile = chain.invoke({"cv_text": raw_text})
     logger.info("UserProfile successfully extracted via LangChain.")
-    return profile.dict()
+    return profile.model_dump()
 
 
 # ---------------------------------------------------------------------------
@@ -144,7 +147,7 @@ def _fallback_profile(raw_text: str) -> dict:
 def parse_cv(
     cv_path: str | Path,
     extra_preferences: dict | None = None,
-    llm: ChatAnthropic | None = None,
+    llm: ChatOpenAI | None = None,
 ) -> dict:
     """
     Parse a CV PDF and return a UserProfile dict.
@@ -161,9 +164,9 @@ def parse_cv(
             "salary_range": "50k-65k EUR",
         }
         These are appended to the `notes` field.
-    llm : ChatAnthropic, optional
-        Pre-instantiated LangChain ChatAnthropic model.
-        If None, a default instance is created (reads ANTHROPIC_API_KEY from env).
+    llm : ChatOpenAI, optional
+        Pre-instantiated LangChain ChatOpenAI model.
+        If None, a default instance is created (reads OPENAI_API_KEY from env).
 
     Returns
     -------
@@ -177,8 +180,11 @@ def parse_cv(
     ['Python', 'FastAPI', 'Docker', 'PostgreSQL']
     """
     if llm is None:
-        llm = ChatAnthropic(model="claude-sonnet-4-20250514", max_tokens=1024)
-
+        llm = ChatOpenAI(
+                model=os.getenv("AI_MODEL"),
+                base_url=os.getenv("AI_ENDPOINT"),
+                api_key=os.getenv("OPENAI_API_KEY"),
+            )
     # Step 1 — extract raw text
     logger.info("Extracting text from %s", cv_path)
     raw_text = extract_text_from_pdf(cv_path)
