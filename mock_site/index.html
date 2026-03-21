@@ -1,0 +1,590 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>MockJobs — Find your next role</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: Arial, sans-serif; background: #f5f5f5; color: #222; }
+
+    header {
+      background: #1a73e8; color: white; padding: 16px 32px;
+      display: flex; align-items: center; gap: 24px;
+    }
+    header h1 { font-size: 22px; }
+
+    #search-bar {
+      display: flex; gap: 8px; flex: 1;
+    }
+    #search-bar input {
+      padding: 8px 12px; border-radius: 4px; border: none;
+      font-size: 14px; flex: 1;
+    }
+    #search-bar button {
+      padding: 8px 18px; background: #fbbc04; border: none;
+      border-radius: 4px; font-weight: bold; cursor: pointer;
+    }
+
+    #filters {
+      background: white; padding: 12px 32px; border-bottom: 1px solid #ddd;
+      display: flex; gap: 12px; flex-wrap: wrap;
+    }
+    #filters select {
+      padding: 6px 10px; border-radius: 4px; border: 1px solid #ccc;
+      font-size: 13px;
+    }
+
+    #results-info {
+      padding: 16px 32px; font-size: 14px; color: #555;
+    }
+
+    #job-list {
+      padding: 0 32px 32px; display: flex; flex-direction: column; gap: 12px;
+    }
+
+    .job-card {
+      background: white; border-radius: 8px; padding: 20px;
+      border: 1px solid #e0e0e0; cursor: pointer;
+      transition: box-shadow 0.15s;
+    }
+    .job-card:hover { box-shadow: 0 2px 8px rgba(0,0,0,0.12); }
+    .job-card[data-hidden="true"] { display: none; }
+
+    .job-title { font-size: 18px; font-weight: bold; color: #1a73e8; }
+    .job-company { font-size: 14px; color: #444; margin-top: 4px; }
+    .job-meta {
+      display: flex; gap: 16px; margin-top: 8px; font-size: 13px; color: #666;
+    }
+    .badge {
+      display: inline-block; padding: 2px 8px; border-radius: 12px;
+      font-size: 12px; font-weight: bold;
+    }
+    .badge-remote { background: #e8f5e9; color: #2e7d32; }
+    .badge-hybrid { background: #fff3e0; color: #e65100; }
+    .badge-onsite { background: #fce4ec; color: #880e4f; }
+    .badge-tech { background: #e3f2fd; color: #0d47a1; }
+
+    .job-tags { margin-top: 10px; display: flex; flex-wrap: wrap; gap: 6px; }
+    .job-salary { margin-top: 8px; font-size: 13px; color: #388e3c; font-weight: bold; }
+
+    /* Detail page */
+    #detail-page { display: none; padding: 32px; }
+    #detail-page.visible { display: block; }
+    #job-list-page { display: block; }
+    #job-list-page.hidden { display: none; }
+
+    #back-btn {
+      margin-bottom: 20px; padding: 8px 16px; background: #eee;
+      border: 1px solid #ccc; border-radius: 4px; cursor: pointer; font-size: 14px;
+    }
+    .detail-title { font-size: 26px; font-weight: bold; color: #1a73e8; }
+    .detail-section { margin-top: 20px; }
+    .detail-section h3 { font-size: 16px; font-weight: bold; margin-bottom: 8px; }
+    .detail-section p, .detail-section ul { font-size: 14px; line-height: 1.7; color: #333; }
+    .detail-section ul { padding-left: 20px; }
+    #apply-btn {
+      margin-top: 24px; padding: 12px 32px; background: #1a73e8;
+      color: white; border: none; border-radius: 6px; font-size: 16px;
+      cursor: pointer; font-weight: bold;
+    }
+    #apply-btn:hover { background: #1558b0; }
+    #apply-success { display: none; color: #2e7d32; font-weight: bold; margin-top: 12px; }
+  </style>
+</head>
+<body>
+
+<header>
+  <h1>MockJobs</h1>
+  <div id="search-bar">
+    <input type="text" id="search-input" placeholder="Job title, skill, keyword..." />
+    <select id="location-input">
+      <option value="">All locations</option>
+      <option value="Paris">Paris</option>
+      <option value="Lyon">Lyon</option>
+      <option value="Remote">Remote</option>
+      <option value="Nantes">Nantes</option>
+    </select>
+    <button id="search-btn" onclick="runSearch()">Search</button>
+  </div>
+</header>
+
+<div id="filters">
+  <select id="filter-remote" onchange="runSearch()">
+    <option value="">Remote: All</option>
+    <option value="remote">Full remote</option>
+    <option value="hybrid">Hybrid</option>
+    <option value="onsite">On-site</option>
+  </select>
+  <select id="filter-sector" onchange="runSearch()">
+    <option value="">Sector: All</option>
+    <option value="fintech">FinTech</option>
+    <option value="healthtech">HealthTech</option>
+    <option value="saas">SaaS</option>
+    <option value="ecommerce">E-commerce</option>
+  </select>
+  <select id="filter-xp" onchange="runSearch()">
+    <option value="">Experience: All</option>
+    <option value="junior">Junior (0–2 yrs)</option>
+    <option value="mid">Mid (3–5 yrs)</option>
+    <option value="senior">Senior (5+ yrs)</option>
+  </select>
+</div>
+
+<!-- List page -->
+<div id="job-list-page">
+  <div id="results-info">Showing <span id="result-count">8</span> jobs</div>
+  <div id="job-list">
+
+    <div class="job-card" data-id="1" data-title="Senior Python Backend Engineer"
+         data-remote="remote" data-sector="fintech" data-xp="senior"
+         data-tags="Python,FastAPI,PostgreSQL,Docker,GCP"
+         onclick="showDetail(1)">
+      <div class="job-title">Senior Python Backend Engineer</div>
+      <div class="job-company">Payflow — FinTech startup</div>
+      <div class="job-meta">
+        <span>📍 Full Remote (France)</span>
+        <span class="badge badge-remote">Remote</span>
+        <span>💼 FinTech</span>
+      </div>
+      <div class="job-tags">
+        <span class="badge badge-tech">Python</span>
+        <span class="badge badge-tech">FastAPI</span>
+        <span class="badge badge-tech">PostgreSQL</span>
+        <span class="badge badge-tech">Docker</span>
+        <span class="badge badge-tech">GCP</span>
+      </div>
+      <div class="job-salary">💰 55 000 – 70 000 € / year</div>
+    </div>
+
+    <div class="job-card" data-id="2" data-title="ML Engineer"
+         data-remote="hybrid" data-sector="healthtech" data-xp="mid"
+         data-tags="Python,PyTorch,Kubernetes,AWS,MLflow"
+         onclick="showDetail(2)">
+      <div class="job-title">ML Engineer</div>
+      <div class="job-company">MediAI — HealthTech scale-up</div>
+      <div class="job-meta">
+        <span>📍 Paris (hybrid 3j/2j)</span>
+        <span class="badge badge-hybrid">Hybrid</span>
+        <span>💼 HealthTech</span>
+      </div>
+      <div class="job-tags">
+        <span class="badge badge-tech">Python</span>
+        <span class="badge badge-tech">PyTorch</span>
+        <span class="badge badge-tech">Kubernetes</span>
+        <span class="badge badge-tech">AWS</span>
+        <span class="badge badge-tech">MLflow</span>
+      </div>
+      <div class="job-salary">💰 50 000 – 65 000 € / year</div>
+    </div>
+
+    <div class="job-card" data-id="3" data-title="Frontend Developer React"
+         data-remote="onsite" data-sector="ecommerce" data-xp="junior"
+         data-tags="React,TypeScript,GraphQL,Figma"
+         onclick="showDetail(3)">
+      <div class="job-title">Frontend Developer — React</div>
+      <div class="job-company">Shoply — E-commerce</div>
+      <div class="job-meta">
+        <span>📍 Lyon (on-site)</span>
+        <span class="badge badge-onsite">On-site</span>
+        <span>💼 E-commerce</span>
+      </div>
+      <div class="job-tags">
+        <span class="badge badge-tech">React</span>
+        <span class="badge badge-tech">TypeScript</span>
+        <span class="badge badge-tech">GraphQL</span>
+        <span class="badge badge-tech">Figma</span>
+      </div>
+      <div class="job-salary">💰 36 000 – 44 000 € / year</div>
+    </div>
+
+    <div class="job-card" data-id="4" data-title="DevOps Engineer"
+         data-remote="hybrid" data-sector="saas" data-xp="mid"
+         data-tags="Kubernetes,Terraform,CI/CD,AWS,Python"
+         onclick="showDetail(4)">
+      <div class="job-title">DevOps Engineer</div>
+      <div class="job-company">CloudStack — SaaS infrastructure</div>
+      <div class="job-meta">
+        <span>📍 Nantes (hybrid)</span>
+        <span class="badge badge-hybrid">Hybrid</span>
+        <span>💼 SaaS</span>
+      </div>
+      <div class="job-tags">
+        <span class="badge badge-tech">Kubernetes</span>
+        <span class="badge badge-tech">Terraform</span>
+        <span class="badge badge-tech">CI/CD</span>
+        <span class="badge badge-tech">AWS</span>
+        <span class="badge badge-tech">Python</span>
+      </div>
+      <div class="job-salary">💰 48 000 – 60 000 € / year</div>
+    </div>
+
+    <div class="job-card" data-id="5" data-title="Data Engineer"
+         data-remote="remote" data-sector="fintech" data-xp="mid"
+         data-tags="Python,Spark,dbt,Airflow,Snowflake"
+         onclick="showDetail(5)">
+      <div class="job-title">Data Engineer</div>
+      <div class="job-company">LendSmart — FinTech</div>
+      <div class="job-meta">
+        <span>📍 Full Remote</span>
+        <span class="badge badge-remote">Remote</span>
+        <span>💼 FinTech</span>
+      </div>
+      <div class="job-tags">
+        <span class="badge badge-tech">Python</span>
+        <span class="badge badge-tech">Spark</span>
+        <span class="badge badge-tech">dbt</span>
+        <span class="badge badge-tech">Airflow</span>
+        <span class="badge badge-tech">Snowflake</span>
+      </div>
+      <div class="job-salary">💰 45 000 – 58 000 € / year</div>
+    </div>
+
+    <div class="job-card" data-id="6" data-title="Backend Engineer — Node.js"
+         data-remote="hybrid" data-sector="saas" data-xp="junior"
+         data-tags="Node.js,TypeScript,MongoDB,Redis,Docker"
+         onclick="showDetail(6)">
+      <div class="job-title">Backend Engineer — Node.js</div>
+      <div class="job-company">Notifi — SaaS notifications platform</div>
+      <div class="job-meta">
+        <span>📍 Paris (hybrid)</span>
+        <span class="badge badge-hybrid">Hybrid</span>
+        <span>💼 SaaS</span>
+      </div>
+      <div class="job-tags">
+        <span class="badge badge-tech">Node.js</span>
+        <span class="badge badge-tech">TypeScript</span>
+        <span class="badge badge-tech">MongoDB</span>
+        <span class="badge badge-tech">Redis</span>
+        <span class="badge badge-tech">Docker</span>
+      </div>
+      <div class="job-salary">💰 38 000 – 48 000 € / year</div>
+    </div>
+
+    <div class="job-card" data-id="7" data-title="AI / LLM Engineer"
+         data-remote="remote" data-sector="saas" data-xp="senior"
+         data-tags="Python,LangChain,RAG,Claude,OpenAI,FastAPI"
+         onclick="showDetail(7)">
+      <div class="job-title">AI / LLM Engineer</div>
+      <div class="job-company">Cogni — AI-native SaaS</div>
+      <div class="job-meta">
+        <span>📍 Full Remote (Europe)</span>
+        <span class="badge badge-remote">Remote</span>
+        <span>💼 SaaS / AI</span>
+      </div>
+      <div class="job-tags">
+        <span class="badge badge-tech">Python</span>
+        <span class="badge badge-tech">LangChain</span>
+        <span class="badge badge-tech">RAG</span>
+        <span class="badge badge-tech">Claude</span>
+        <span class="badge badge-tech">FastAPI</span>
+      </div>
+      <div class="job-salary">💰 65 000 – 85 000 € / year</div>
+    </div>
+
+    <div class="job-card" data-id="8" data-title="Full Stack Developer"
+         data-remote="onsite" data-sector="healthtech" data-xp="mid"
+         data-tags="React,Python,Django,PostgreSQL,Docker"
+         onclick="showDetail(8)">
+      <div class="job-title">Full Stack Developer</div>
+      <div class="job-company">ClinicOS — HealthTech</div>
+      <div class="job-meta">
+        <span>📍 Lyon (on-site)</span>
+        <span class="badge badge-onsite">On-site</span>
+        <span>💼 HealthTech</span>
+      </div>
+      <div class="job-tags">
+        <span class="badge badge-tech">React</span>
+        <span class="badge badge-tech">Python</span>
+        <span class="badge badge-tech">Django</span>
+        <span class="badge badge-tech">PostgreSQL</span>
+        <span class="badge badge-tech">Docker</span>
+      </div>
+      <div class="job-salary">💰 42 000 – 52 000 € / year</div>
+    </div>
+
+  </div>
+</div>
+
+<!-- Detail page (hidden by default) -->
+<div id="detail-page">
+  <button id="back-btn" onclick="showList()">← Back to results</button>
+  <div id="detail-content"></div>
+</div>
+
+<script>
+  const jobs = {
+    1: {
+      title: "Senior Python Backend Engineer",
+      company: "Payflow",
+      sector: "FinTech",
+      location: "Full Remote (France)",
+      remote: "remote",
+      salary: "55 000 – 70 000 € / year",
+      experience: "5+ years",
+      tags: ["Python", "FastAPI", "PostgreSQL", "Docker", "GCP"],
+      description: `Payflow is a fast-growing FinTech startup building the next generation of payment infrastructure for SMEs across Europe. We process over €2B in transactions annually and are expanding our engineering team.`,
+      responsibilities: [
+        "Design and maintain high-throughput REST APIs with FastAPI",
+        "Own and evolve our PostgreSQL data model",
+        "Deploy and monitor services on GCP using Cloud Run and Cloud SQL",
+        "Collaborate with the product team on payment feature design",
+        "Mentor junior engineers and lead technical design reviews"
+      ],
+      requirements: [
+        "5+ years of professional Python experience",
+        "Strong knowledge of FastAPI or similar async frameworks",
+        "Experience with PostgreSQL at scale",
+        "Comfortable with Docker and cloud deployments (GCP preferred)",
+        "Fluent in French or English"
+      ]
+    },
+    2: {
+      title: "ML Engineer",
+      company: "MediAI",
+      sector: "HealthTech",
+      location: "Paris (hybrid 3j remote / 2j onsite)",
+      remote: "hybrid",
+      salary: "50 000 – 65 000 € / year",
+      experience: "3–5 years",
+      tags: ["Python", "PyTorch", "Kubernetes", "AWS", "MLflow"],
+      description: `MediAI is building AI tools for radiologists and hospital staff. Our models assist in the early detection of pathologies from medical imaging. We are a team of 40, backed by Series A funding.`,
+      responsibilities: [
+        "Train and evaluate computer vision models on medical imaging datasets",
+        "Build and maintain ML pipelines with MLflow and Airflow",
+        "Deploy models to production on Kubernetes (AWS EKS)",
+        "Work closely with clinicians to validate model performance",
+        "Contribute to model monitoring and retraining strategies"
+      ],
+      requirements: [
+        "3–5 years of experience in ML engineering",
+        "Strong PyTorch skills",
+        "Experience deploying models in production",
+        "Familiarity with medical imaging (DICOM) is a plus",
+        "AWS and Kubernetes experience"
+      ]
+    },
+    3: {
+      title: "Frontend Developer — React",
+      company: "Shoply",
+      sector: "E-commerce",
+      location: "Lyon (on-site)",
+      remote: "onsite",
+      salary: "36 000 – 44 000 € / year",
+      experience: "0–2 years",
+      tags: ["React", "TypeScript", "GraphQL", "Figma"],
+      description: `Shoply is a growing e-commerce platform for independent retailers in France. We are looking for a frontend developer to join our product team in Lyon.`,
+      responsibilities: [
+        "Build and maintain React components for our merchant dashboard",
+        "Integrate GraphQL APIs from our backend",
+        "Collaborate with designers using Figma"
+      ],
+      requirements: [
+        "1+ year of React experience",
+        "TypeScript proficiency",
+        "Knowledge of GraphQL",
+        "Team player attitude"
+      ]
+    },
+    4: {
+      title: "DevOps Engineer",
+      company: "CloudStack",
+      sector: "SaaS / Infrastructure",
+      location: "Nantes (hybrid)",
+      remote: "hybrid",
+      salary: "48 000 – 60 000 € / year",
+      experience: "3–5 years",
+      tags: ["Kubernetes", "Terraform", "CI/CD", "AWS", "Python"],
+      description: `CloudStack provides infrastructure management SaaS for mid-size companies. We manage 500+ Kubernetes clusters and are building the next generation of our control plane.`,
+      responsibilities: [
+        "Manage and scale Kubernetes clusters on AWS",
+        "Write and maintain Terraform modules",
+        "Improve CI/CD pipelines (GitHub Actions, ArgoCD)",
+        "On-call rotation (with compensation)"
+      ],
+      requirements: [
+        "3+ years DevOps / SRE experience",
+        "Strong Kubernetes skills (CKA preferred)",
+        "Terraform infrastructure-as-code",
+        "Python scripting",
+        "AWS certifications a plus"
+      ]
+    },
+    5: {
+      title: "Data Engineer",
+      company: "LendSmart",
+      sector: "FinTech",
+      location: "Full Remote",
+      remote: "remote",
+      salary: "45 000 – 58 000 € / year",
+      experience: "3–5 years",
+      tags: ["Python", "Spark", "dbt", "Airflow", "Snowflake"],
+      description: `LendSmart is a credit-scoring FinTech helping banks automate lending decisions. We process millions of credit events daily and our data team is central to our product.`,
+      responsibilities: [
+        "Build and maintain data pipelines in Airflow",
+        "Transform raw financial data using dbt and Snowflake",
+        "Optimize Spark jobs for large-scale batch processing",
+        "Ensure data quality and lineage documentation"
+      ],
+      requirements: [
+        "3+ years as a data engineer",
+        "Strong SQL and dbt",
+        "Apache Spark / PySpark",
+        "Airflow orchestration",
+        "Snowflake or similar cloud DWH"
+      ]
+    },
+    6: {
+      title: "Backend Engineer — Node.js",
+      company: "Notifi",
+      sector: "SaaS",
+      location: "Paris (hybrid)",
+      remote: "hybrid",
+      salary: "38 000 – 48 000 € / year",
+      experience: "1–3 years",
+      tags: ["Node.js", "TypeScript", "MongoDB", "Redis", "Docker"],
+      description: `Notifi is a SaaS platform for push notifications and in-app messaging used by 3,000+ companies. We are looking for a junior backend engineer to help us scale our notification delivery engine.`,
+      responsibilities: [
+        "Develop new API endpoints in Node.js / TypeScript",
+        "Optimize notification delivery queue (Redis + BullMQ)",
+        "Write unit and integration tests",
+        "Participate in code reviews"
+      ],
+      requirements: [
+        "1+ year of Node.js / TypeScript experience",
+        "Understanding of MongoDB",
+        "Docker basics",
+        "Good communication skills"
+      ]
+    },
+    7: {
+      title: "AI / LLM Engineer",
+      company: "Cogni",
+      sector: "SaaS / AI",
+      location: "Full Remote (Europe)",
+      remote: "remote",
+      salary: "65 000 – 85 000 € / year",
+      experience: "3–6 years",
+      tags: ["Python", "LangChain", "RAG", "Claude", "OpenAI", "FastAPI"],
+      description: `Cogni is building AI-native productivity tools powered by large language models. Our flagship product is an intelligent document assistant used by legal and compliance teams across Europe. We are fully remote with a team of 25.`,
+      responsibilities: [
+        "Design and implement RAG pipelines (retrieval-augmented generation)",
+        "Integrate Claude and OpenAI APIs with function calling and tool use",
+        "Build agent workflows for multi-step document analysis",
+        "Evaluate LLM outputs using automated benchmarks",
+        "Contribute to our LLM observability stack"
+      ],
+      requirements: [
+        "3+ years Python experience",
+        "Hands-on experience with LangChain, LlamaIndex, or similar",
+        "Strong understanding of RAG architectures",
+        "Experience with vector databases (Chroma, Pinecone, Weaviate)",
+        "Familiarity with Claude or OpenAI APIs"
+      ]
+    },
+    8: {
+      title: "Full Stack Developer",
+      company: "ClinicOS",
+      sector: "HealthTech",
+      location: "Lyon (on-site)",
+      remote: "onsite",
+      salary: "42 000 – 52 000 € / year",
+      experience: "3–5 years",
+      tags: ["React", "Python", "Django", "PostgreSQL", "Docker"],
+      description: `ClinicOS is a SaaS EHR (Electronic Health Record) platform used by 200+ medical clinics in France. We are looking for a full stack developer to join our small but efficient engineering team in Lyon.`,
+      responsibilities: [
+        "Develop features across our Django backend and React frontend",
+        "Maintain and evolve our PostgreSQL schema",
+        "Ensure GDPR and HDS compliance in all data handling",
+        "Write tests and participate in code reviews"
+      ],
+      requirements: [
+        "3+ years full stack experience",
+        "Django / DRF",
+        "React + modern JavaScript",
+        "PostgreSQL",
+        "Bonus: experience in regulated sectors (health, finance)"
+      ]
+    }
+  };
+
+  function runSearch() {
+    const keyword = document.getElementById("search-input").value.toLowerCase();
+    const locationVal = document.getElementById("location-input").value.toLowerCase();
+    const remoteVal = document.getElementById("filter-remote").value;
+    const sectorVal = document.getElementById("filter-sector").value;
+    const xpVal = document.getElementById("filter-xp").value;
+
+    const xpMap = { junior: "junior", mid: "mid", senior: "senior" };
+    const xpDataMap = { "0–2 years": "junior", "1–3 years": "junior", "3–5 years": "mid", "3–6 years": "mid", "5+ years": "senior" };
+
+    let count = 0;
+    document.querySelectorAll(".job-card").forEach(card => {
+      const title = card.dataset.title.toLowerCase();
+      const tags = card.dataset.tags.toLowerCase();
+      const remote = card.dataset.remote;
+      const sector = card.dataset.sector;
+      const xp = card.dataset.xp;
+      const loc = card.querySelector(".job-meta span").textContent.toLowerCase();
+
+      const matchKeyword = !keyword || title.includes(keyword) || tags.includes(keyword);
+      const matchLocation = !locationVal || loc.includes(locationVal);
+      const matchRemote = !remoteVal || remote === remoteVal;
+      const matchSector = !sectorVal || sector === sectorVal;
+      const matchXp = !xpVal || xp === xpVal;
+
+      const show = matchKeyword && matchLocation && matchRemote && matchSector && matchXp;
+      card.dataset.hidden = show ? "false" : "true";
+      if (show) count++;
+    });
+
+    document.getElementById("result-count").textContent = count;
+  }
+
+  function showDetail(id) {
+    const job = jobs[id];
+    if (!job) return;
+
+    const html = `
+      <div class="detail-title">${job.title}</div>
+      <div class="job-company" style="font-size:16px;margin-top:6px">${job.company} — ${job.sector}</div>
+      <div class="job-meta" style="margin-top:10px">
+        <span>📍 ${job.location}</span>
+        <span>🕐 ${job.experience}</span>
+        <span class="job-salary" style="color:#388e3c">💰 ${job.salary}</span>
+      </div>
+      <div class="job-tags" style="margin-top:10px">
+        ${job.tags.map(t => `<span class="badge badge-tech">${t}</span>`).join("")}
+      </div>
+      <div class="detail-section">
+        <h3>About the company</h3>
+        <p>${job.description}</p>
+      </div>
+      <div class="detail-section">
+        <h3>Responsibilities</h3>
+        <ul>${job.responsibilities.map(r => `<li>${r}</li>`).join("")}</ul>
+      </div>
+      <div class="detail-section">
+        <h3>Requirements</h3>
+        <ul>${job.requirements.map(r => `<li>${r}</li>`).join("")}</ul>
+      </div>
+      <button id="apply-btn" onclick="applyJob()">Apply now</button>
+      <p id="apply-success">✅ Application submitted successfully!</p>
+    `;
+
+    document.getElementById("detail-content").innerHTML = html;
+    document.getElementById("job-list-page").classList.add("hidden");
+    document.getElementById("detail-page").classList.add("visible");
+  }
+
+  function showList() {
+    document.getElementById("job-list-page").classList.remove("hidden");
+    document.getElementById("detail-page").classList.remove("visible");
+  }
+
+  function applyJob() {
+    document.getElementById("apply-btn").style.display = "none";
+    document.getElementById("apply-success").style.display = "block";
+  }
+</script>
+</body>
+</html>
