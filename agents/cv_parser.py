@@ -15,44 +15,12 @@ import pdfplumber
 from dotenv import load_dotenv
 from langchain_openai import ChatOpenAI
 from langchain_core.prompts import ChatPromptTemplate
-from pydantic import BaseModel, Field
+
+from models.user_profile import UserProfile
 
 load_dotenv()  # charge OPENAI_API_KEY depuis .env
 
 logger = logging.getLogger(__name__)
-
-# ---------------------------------------------------------------------------
-# UserProfile schema — Pydantic model for LangChain structured output
-# ---------------------------------------------------------------------------
-
-class UserProfile(BaseModel):
-    """Structured profile extracted from a candidate's CV."""
-
-    job_titles: list[str] = Field(
-        description="Job titles the candidate has held or is targeting."
-    )
-    skills: list[str] = Field(
-        description="Technical and soft skills listed in the CV."
-    )
-    years_of_experience: float = Field(
-        description="Total years of professional experience (estimate if not explicit)."
-    )
-    education: str = Field(
-        description="Highest or most relevant degree / diploma."
-    )
-    languages: list[str] = Field(
-        description="Human languages spoken (e.g. French, English)."
-    )
-    preferred_sectors: list[str] = Field(
-        description="Industry sectors the candidate prefers or has experience in."
-    )
-    notes: str = Field(
-        description=(
-            "Free-text summary: location preferences, remote policy, "
-            "salary expectations, anything not covered by the other fields."
-        )
-    )
-
 
 # ---------------------------------------------------------------------------
 # PDF text extraction
