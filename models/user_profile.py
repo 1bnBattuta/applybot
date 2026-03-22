@@ -53,7 +53,8 @@ class UserProfile(BaseModel):
         ge=0,
         description="Minimum acceptable annual salary in EUR. None if not specified.",
     )
-    notes: str = Field(
+    notes: str | None = Field(
+        default=None,
         description=(
             "Free-text summary: location preferences, remote policy, "
             "salary expectations, anything not covered by the other fields."
